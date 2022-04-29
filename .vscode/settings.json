@@ -1,0 +1,16 @@
+{
+    "python.testing.pytestArgs": [
+        "url_pull",
+    ],
+    "python.defaultInterpreterPath": "/Users/joeyd/opt/anaconda3/envs/house-price-predictor",
+    "python.testing.unittestEnabled": false,
+    "python.testing.pytestEnabled": true,
+    "python.analysis.extraPaths": [
+        "${workspaceFolder}/utils/",
+        "${workspaceFolder}/url_pull/",
+        "${workspaceFolder}/url_pull/scrapers/",
+        "${workspaceFolder}/url_rank_tree/",
+        "${workspaceFolder}/url_to_rank_tree/",
+        "${workspaceFolder}/file_appender/",
+    ]
+}
