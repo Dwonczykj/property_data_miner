@@ -54,70 +54,18 @@ class UrlProps():
     numHrefsInScriptsAndButtons = property(getNumHrefsInScriptsAndButtons)
     
     
-class UrlScraperBase():
-    '''Class to scrape urls using an algorithm that specifies how the engine will discover more urls to scrape'''
-    def __init__(self, useSelenium:bool) -> None:
-        self.driver:Safari|None = None
-        self.useSelenium = useSelenium
+class UrlScraperRequestsBase():
+    '''Class to scrape urls using an algorithm that specifies how the engine will discover more urls to scrape
+        
+        The class is limited to raw HTML from requests'''
+    def __init__(self) -> None:
         
         self._BASE_WINDOW_HANDLE_LAZY = ''
         self._domainsHit = defaultdict[str,int](int)
         self._saveFileWrap:IFileAppender|None=None
         self._fileToClose:bool=False
-        if self.useSelenium:
-            self.driver = Safari()
-            self.driver.implicitly_wait(10)
-            self._BASE_WINDOW_HANDLE_LAZY = self.driver.current_window_handle
-            self._closeExtraSeleniumWebWindows()
-    
-    @abc.abstractmethod    
-    def link_discovery_algo(self):
-        '''A function that specifies how to pull urls to process from the landing page url that is initialised in the class's run_url_discovery function'''
-        pass
-            
-    def _closeExtraSeleniumWebWindows(self):
-        if len(self.driver.window_handles) > 1 and self._BASE_WINDOW_HANDLE_LAZY in self.driver.window_handles:
-            for i, w in enumerate(self.driver.window_handles):
-                if w != self._BASE_WINDOW_HANDLE_LAZY:
-                    self.driver.switch_to.window(w)
-                    self.driver.close()
-            self.driver.switch_to.window(self._BASE_WINDOW_HANDLE_LAZY)
-        assert self._BASE_WINDOW_HANDLE_LAZY in self.driver.window_handles, 'BASE_WINDOW_HANDLE_LAZY not in driver.window_handles'
-        assert len(
-            self.driver.window_handles) == 1, f'{type(self.driver)} should only have 1 window open.'
-
-    
-
-    
-
-    def find_and_agree_cookies(self):
-        cookiesAgreed = False
-
-        def _f(btnText): return f"//*[text()='{btnText}']"
-        agreebtns = self.driver.find_elements_by_xpath(_f('I agree'))
-        btn_ids = None
-        if agreebtns:
-            btn_ids = [agreebtn.get_attribute('id') for agreebtn in agreebtns]
-        if not btn_ids:
-            agreebtns = self.driver.find_elements_by_xpath(_f('Allow All'))
-            if agreebtns:
-                btn_ids = [agreebtn.get_attribute(
-                    'id') for agreebtn in agreebtns]
-            else:
-                btn_ids = []
-
-        if btn_ids:
-            for btn_id in btn_ids:
-                btn = self.driver.find_element_by_id(btn_id)
-                if btn.is_displayed():
-                    if not seleniumTryClickWebEl(btn):
-                        # driver.execute_script(f'$(\'#{btn_id}\').click()')
-                        self.driver.execute_script(
-                            f'document.getElementById(\'{btn_id}\').click()')
-            cookiesAgreed = True
-
-        return cookiesAgreed
-    
+        self.useSelenium = False
+        
     def open_file_storage_stream(self, saveOut: str | None = None):
         fileToClose = False
         saveFileWrap: IFileAppender
@@ -133,7 +81,7 @@ class UrlScraperBase():
                 state = saveFileWrap.loadData()
                 if hasattr(state, 'urls'):
                     urlPioneer = set(
-                        UrlScraperBase._processState(state['urls']))
+                        UrlScraperRequestsBase._processState(state['urls']))
         else:
             saveFileWrap = DummyFileAppender('Dummy').openStream()
         self._saveFileWrap = saveFileWrap
@@ -146,9 +94,9 @@ class UrlScraperBase():
     def _processState(state:TX):
         '''A method to allow us to reload the state of the url discovery class from a file so that we dont need to load (pull) the url history tree'''
         if isinstance(state, list) or isinstance(state,Iterable):
-            return [u for s in state for u in UrlScraperBase._processState(s)]
+            return [u for s in state for u in UrlScraperRequestsBase._processState(s)]
         elif isinstance(state, dict):
-            return [u for k in state.keys() for u in [k, *UrlScraperBase._processState(state[k])]]
+            return [u for k in state.keys() for u in [k, *UrlScraperRequestsBase._processState(state[k])]]
         elif isinstance(state, str):
             return [state]
         elif isinstance(state, int) or isinstance(state, float) or isinstance(state, bool):
@@ -177,7 +125,130 @@ class UrlScraperBase():
                 urlDomain = None
 
         return urlDomain
+    
+    def run_url_discovery_engine(self, urlPioneer: set[str], domain: str, subDomainReq: str | None = None):
+        
+        try:
+            urlsToSearch = [domain]
+            newurls: set[str] = set()
 
+            _i = 0  # explosion depth index
+            spinner = Spinner(message='Urls discovered')
+            urlTree: RankPairTree = RankPairTree()
+            urlDict: dict[str, UrlProps] = defaultdict(
+                lambda: UrlProps([], []))
+            
+            newurls = set()
+            for url in urlsToSearch:
+                
+                exampleUrl = urlTree.getExampleGeneralisationOf(
+                    url, removeRegexNodes=True)
+                urlTree.embedUrl(url)
+                urlProps = self.urlDiscovery(
+                        url, requiredSubDomain=subDomainReq)
+                
+                urlDict[url] = urlProps
+
+                newurls = newurls.union(
+                    (urlProps.anchorTagHrefs + urlProps.embeddedScriptAndAnchorTagHrefs))
+
+                if isinstance(self._saveFileWrap, JsonFileAppender):
+                    self._saveFileWrap.write({'urls': {url: list(newurls)}})
+                elif isinstance(self._saveFileWrap, TxtFileAppender):
+                    self._saveFileWrap.write(
+                        f'\n{url}\n-\t' + '\n-\t'.join(newurls))
+            urlsToSearch = list(newurls - urlPioneer)
+
+            
+            urlPioneer = urlPioneer.union(urlsToSearch)
+            
+            return urlPioneer
+            
+        except Exception as e:
+            logging.error(e)
+            logging.error(exception_to_string(e))
+            print(e)
+            if self._fileToClose != False and self._saveFileWrap is not None:
+                self._saveFileWrap.closeStream()
+
+            return None
+        
+    def urlDiscovery(self, rootUrl: str, requiredSubDomain: str | None = None):
+        
+        logging.info(f'urlDiscovery[RequestsRawHTML]: {rootUrl}')
+
+        urlDomain = self.registerNewDomains(rootUrl=rootUrl)
+        result = self._urlDiscoveryHTMLOnly(rootUrl)
+
+        def _removeEmptyUrls(result: list[str]):
+            return [url for url in result if url is not None and ((requiredSubDomain is not None and requiredSubDomain in url) or requiredSubDomain is None)]
+
+        return UrlProps(
+            anchorTagHrefs=_removeEmptyUrls(result.anchorTagHrefs),
+            embeddedScriptAndAnchorTagHrefs=_removeEmptyUrls(
+                result.embeddedScriptAndAnchorTagHrefs)
+        )
+        
+    @abc.abstractmethod
+    def link_discovery_algo(self):
+        '''A function that specifies how to pull urls to process from the landing page url that is initialised in the class's run_url_discovery function'''
+        pass
+    
+    @abc.abstractmethod
+    def _urlDiscoveryHTMLOnly(self, rootUrl: str) -> UrlProps:
+        pass
+        
+class UrlScraperSeleniumBase(UrlScraperRequestsBase):
+    '''Class to scrape urls using an algorithm that specifies how the engine will discover more urls to scrape
+        
+        The class uses browser emulation _when necessary_ to render pages.'''
+    def __init__(self) -> None:
+        super().__init__()
+        self.useSelenium = True
+        self.driver = Safari()
+        self.driver.implicitly_wait(10)
+        self._BASE_WINDOW_HANDLE_LAZY = self.driver.current_window_handle
+        self._closeExtraSeleniumWebWindows()
+            
+    def _closeExtraSeleniumWebWindows(self):
+        if len(self.driver.window_handles) > 1 and self._BASE_WINDOW_HANDLE_LAZY in self.driver.window_handles:
+            for i, w in enumerate(self.driver.window_handles):
+                if w != self._BASE_WINDOW_HANDLE_LAZY:
+                    self.driver.switch_to.window(w)
+                    self.driver.close()
+            self.driver.switch_to.window(self._BASE_WINDOW_HANDLE_LAZY)
+        assert self._BASE_WINDOW_HANDLE_LAZY in self.driver.window_handles, 'BASE_WINDOW_HANDLE_LAZY not in driver.window_handles'
+        assert len(
+            self.driver.window_handles) == 1, f'{type(self.driver)} should only have 1 window open.'
+    
+    def find_and_agree_cookies(self):
+        cookiesAgreed = False
+
+        def _f(btnText): return f"//*[text()='{btnText}']"
+        agreebtns = self.driver.find_elements_by_xpath(_f('I agree'))
+        btn_ids = None
+        if agreebtns:
+            btn_ids = [agreebtn.get_attribute('id') for agreebtn in agreebtns]
+        if not btn_ids:
+            agreebtns = self.driver.find_elements_by_xpath(_f('Allow All'))
+            if agreebtns:
+                btn_ids = [agreebtn.get_attribute(
+                    'id') for agreebtn in agreebtns]
+            else:
+                btn_ids = []
+
+        if btn_ids:
+            for btn_id in btn_ids:
+                btn = self.driver.find_element_by_id(btn_id)
+                if btn.is_displayed():
+                    if not seleniumTryClickWebEl(btn):
+                        # driver.execute_script(f'$(\'#{btn_id}\').click()')
+                        self.driver.execute_script(
+                            f'document.getElementById(\'{btn_id}\').click()')
+            cookiesAgreed = True
+
+        return cookiesAgreed
+    
     def cookieCheckNeeded(self, urlDomain: str):
 
         if self._domainsHit[urlDomain] < self.maxDomainHitsCookieCheck:
@@ -188,7 +259,7 @@ class UrlScraperBase():
 
     def urlDiscovery(self, rootUrl: str, driver: Safari | None = None, useSelenium: bool = False, requiredSubDomain: str | None = None):
         self.maxDomainHitsCookieCheck = 5
-        driverType = 'selenium' if useSelenium else 'bs4'
+        driverType = 'selenium' if useSelenium else 'RequestsRawHTML'
         logging.info(f'urlDiscovery[{driverType}]: {rootUrl}')
 
         urlDomain = self.registerNewDomains(rootUrl=rootUrl)
@@ -224,6 +295,13 @@ class UrlScraperBase():
     def _urlDiscoveryHTMLOnly(self, rootUrl: str) -> UrlProps:
         pass
     
+    def _urlNeedsJs(self, exampleUrl:str, url:str, expectedHtmlProps: UrlProps, urlProps: UrlProps, urlDict: dict[str, UrlProps]):
+        '''Function to check if a url requires browser emulation (selenium) to load the full html by running js on the page'''
+        if len(expectedHtmlProps.anchorTagHrefs) > 0 and (len(urlProps.anchorTagHrefs) / len(expectedHtmlProps.anchorTagHrefs)) < 0.5:
+            urlDict[exampleUrl].canUseRawHTMLRequests = CanUseRawHTMLRequests.No
+        else:
+            urlDict[exampleUrl].canUseRawHTMLRequests = CanUseRawHTMLRequests.Yes
+    
     def run_url_discovery_engine(self, urlPioneer: set[str], domain: str, subDomainReq: str | None = None):
         driver = self.driver
         try:
@@ -252,8 +330,9 @@ class UrlScraperBase():
                     expectedHtmlProps: UrlProps = urlDict[exampleUrl]
                     urlProps = self.urlDiscovery(
                         url, driver, useSelenium=_useSeleniumForThisUrl, requiredSubDomain=subDomainReq)
-                    if len(expectedHtmlProps.anchorTagHrefs) > 0 and (len(urlProps.anchorTagHrefs) / len(expectedHtmlProps.anchorTagHrefs)) < 0.5:
-                        urlDict[exampleUrl].canUseRawHTMLRequests = CanUseRawHTMLRequests.No
+                    # Check if selenium is necesary, 
+                    self._urlNeedsJs(exampleUrl=exampleUrl, url=url, expectedHtmlProps=expectedHtmlProps, urlProps=urlProps, urlDict=urlDict)
+                    if urlDict[exampleUrl].canUseRawHTMLRequests == CanUseRawHTMLRequests.No:
                         _useSeleniumForThisUrl = True
                         urlProps = self.urlDiscovery(
                             url, driver, useSelenium=_useSeleniumForThisUrl, requiredSubDomain=subDomainReq)
@@ -261,7 +340,7 @@ class UrlScraperBase():
                         urlDict[url].canUseRawHTMLRequests = CanUseRawHTMLRequests.No
                     else:
                         urlDict[url].canUseRawHTMLRequests = CanUseRawHTMLRequests.Yes
-                        urlDict[exampleUrl].canUseRawHTMLRequests = CanUseRawHTMLRequests.Yes
+                        
                 else:
                     urlProps = self.urlDiscovery(
                         url, driver, useSelenium=_useSeleniumForThisUrl, requiredSubDomain=subDomainReq)
@@ -291,12 +370,4 @@ class UrlScraperBase():
 
             return None
         
-    
-    
 
-        
-    
-            
-    
-
-# TODO: Take the logic from data extraction/HomeTrovitPrice.py and copy into a class for TrovitPropertyUrlParsing

@@ -18,7 +18,7 @@ from progress.counter import Counter
 from progress.bar import Bar
 from py_utils import exception_to_string, nullPipe
 from selenium_interops import get_tag_ancestors_lxml, get_tag_ancestors_selenium
-from url_browse import CanUseRawHTMLRequests, UrlProps, UrlScraperBase
+from url_browse import CanUseRawHTMLRequests, UrlProps, UrlScraperSeleniumBase
 
 from url_discovery import seleniumTryClickWebEl
 from file_appender import IFileAppender, DummyFileAppender, TxtFileAppender, JsonFileAppender
@@ -26,13 +26,13 @@ from url_parser import ParsedUrlParser, URL_RE_PATTERN
 from rank_pair_tree import RankPairTree
 
 
-class UrlSpiderScraper(UrlScraperBase):
+class UrlSpiderScraper(UrlScraperSeleniumBase):
     '''Perform all url scraping with additional url parsing and adding to a rank tree to manage the state of urls already processed'''
     maxSpiderExplodeAllowed: Literal[3] = 3
     defaultSpiderExplodeDepth: Literal[3] = 3
 
-    def __init__(self, useSelenium: bool, maxSubUrls: int = -1) -> None:
-        super().__init__(useSelenium=useSelenium)
+    def __init__(self, maxSubUrls: int = -1) -> None:
+        super().__init__()
         self.maxSubUrls = maxSubUrls
 
     def run_url_discovery(self, domain: str, subDomainReq: str, saveOut: str | None = None):
@@ -196,9 +196,9 @@ class UrlSpiderScraper(UrlScraperBase):
             anchorTagUrls = [we.get_attribute(
                 'href') for we in driver.find_elements(By.TAG_NAME, 'a')]
             scriptTagUrlEmbeds = [nullPipe(re.match(URL_RE_PATTERN, str(
-                we.text)), lambda x: x.string) for we in driver.find_elements(By.TAG_NAME, 'script')]
+                we.text)), lambda x: x.string if x is not None else '') for we in driver.find_elements(By.TAG_NAME, 'script')]
             onClickAttributeUrlEmbeds = [nullPipe(re.match(URL_RE_PATTERN, we.get_attribute(
-                'onClick')), lambda x: x.string) for we in driver.find_elements(By.CSS_SELECTOR, '[onClick]') if we.get_attribute('onClick')]
+                'onClick')), lambda x: x.string if x is not None else '') for we in driver.find_elements(By.CSS_SELECTOR, '[onClick]') if we.get_attribute('onClick')]
         except TimeoutException as timeoutExcp:
             if not anchorTagUrls:
                 logging.warn(
@@ -238,9 +238,9 @@ class UrlSpiderScraper(UrlScraperBase):
 
         anchorTagUrls = [we.get('href') for we in soup.find_all('a')]
         scriptTagUrlEmbeds = [nullPipe(re.match(URL_RE_PATTERN, str(nullPipe(
-            we.string, lambda y: y, returnIfnull=None))), lambda x: x.string) for we in soup.find_all('script')]
+            we.string, lambda y: y, returnIfnull=None))), lambda x: x.string if x is not None else '') for we in soup.find_all('script')]
         onClickAttributeUrlEmbeds = [nullPipe(re.match(URL_RE_PATTERN, we.get(
-            'onClick')), lambda x: x.string) for we in soup.find_all(onClick=True) if we.get('onClick')]
+            'onClick')), lambda x: x.string if x is not None else '') for we in soup.find_all(onClick=True) if we.get('onClick')]
         # Button urls should be included in the onClick handler above.
         # buttonTagUrls = [we for we in driver.find_elements(By.TAG_NAME, 'button')]
 

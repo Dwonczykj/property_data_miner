@@ -18,17 +18,18 @@ from progress.counter import Counter
 from progress.bar import Bar
 from py_utils import exception_to_string, nullPipe
 from selenium_interops import get_tag_ancestors_lxml, get_tag_ancestors_selenium
-from url_browse import UrlProps, UrlScraperBase
+from url_browse import UrlProps, UrlScraperSeleniumBase
 
 from url_discovery import seleniumTryClickWebEl
 from file_appender import IFileAppender, DummyFileAppender, TxtFileAppender, JsonFileAppender
 from url_parser import ParsedUrlParser, URL_RE_PATTERN
 from rank_pair_tree import RankPairTree
 
-class TrovitPropertyUrlScraper(UrlScraperBase):
 
-    def __init__(self, useSelenium: bool) -> None:
-        super().__init__(useSelenium)
+class TrovitPropertyUrlScraper(UrlScraperSeleniumBase):
+
+    def __init__(self) -> None:
+        super().__init__()
         self._page_number: int = 0
         self.maxDomainHitsCookieCheck = 5
 

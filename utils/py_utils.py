@@ -3,13 +3,21 @@ import traceback
 
 TRes = TypeVar("TRes")
 
-def predicatePipe(objResult:TRes, predicate:Callable[[TRes],bool], fnToPassTo:Callable[[TRes,Any],Any], *otherFnArgs, returnIfnull=None):
+
+def predicatePipe(objResult: TRes, 
+                  predicate: Callable[[TRes], bool], 
+                  fnToPassTo: Callable[[TRes, Any], Any] | Callable[[TRes], Any],
+                  *otherFnArgs, 
+                  returnIfnull=None):
     if predicate(objResult):
         return fnToPassTo(objResult, *otherFnArgs)
     else:
         return returnIfnull
     
-def nullPipe(objResult:TRes, fnToPassTo:Callable[[TRes,Any],Any], *otherFnArgs, returnIfnull=None):
+def nullPipe(objResult:TRes,
+             fnToPassTo:Callable[[TRes,Any],Any]|Callable[[TRes],Any], 
+             *otherFnArgs, 
+             returnIfnull=None):
     return predicatePipe(objResult, lambda o: o is not None, fnToPassTo, returnIfnull=returnIfnull, *otherFnArgs)
 
 def exception_to_string(excp:Exception):
