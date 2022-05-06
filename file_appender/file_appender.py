@@ -1,40 +1,45 @@
 from __future__ import annotations
+
 import abc
 import atexit
-from datetime import datetime
-import logging
-import os
 import io
 import json
+import logging
+import os
+from datetime import datetime
 from json import JSONDecodeError
 from typing import Iterable, Tuple, TypeVar
 
+from decorators import recursion_detector
+from py_utils import exception_to_string
+
 
 class IFileAppender(abc.ABC):
-    @abc.abstractclassmethod
+    
+    @abc.abstractmethod
     def openStream(self) -> IFileAppender:
         pass
     
-    @abc.abstractclassmethod
+    @abc.abstractmethod
     def closeStream(self) -> None:
         pass
     
-    @abc.abstractclassmethod
+    @abc.abstractmethod
     def write(self, string:str):
         pass
     
     def __enter__(self):
         return self
 
-    @abc.abstractclassmethod
+    @abc.abstractmethod
     def __exit__(self, exc_type, exc_value, traceback):
         self.closeStream()
         
-    @abc.abstractclassmethod
+    @abc.abstractmethod
     def containsData(self):
         pass
     
-    @abc.abstractclassmethod
+    @abc.abstractmethod
     def loadData(self):
         pass
     
@@ -55,7 +60,7 @@ class FileReader(abc.ABC):
         if not os.path.exists(self._fileName):
             with open(self._fileName, 'w') as f:
                 pass
-        self._file:io.TextIOWrapper = None
+        self._file:io.TextIOWrapper|None = None
         atexit.register(self.closeStream)
         
         
@@ -68,9 +73,9 @@ class FileReader(abc.ABC):
             self._file.close()
             self._file = None
     
-    @abc.abstractclassmethod
+    @abc.abstractmethod
     def read(self):
-        if self._file.readable:
+        if self._file is not None and self._file.readable:
             return self._file.read()
     
     def __enter__(self):
@@ -127,9 +132,10 @@ class FileAppender(IFileAppender, abc.ABC):
         
         self._fileName = os.path.join(parent_dir, nameIt)
         if not os.path.exists(self._fileName):
+            os.makedirs(os.path.dirname(self._fileName), exist_ok=True)
             with open(self._fileName, 'w') as f:
                 pass
-        self._file:io.TextIOWrapper = None
+        self._file:io.TextIOWrapper|None = None
         atexit.register(self.closeStream)
     
     def openStream(self) -> IFileAppender:
@@ -142,7 +148,7 @@ class FileAppender(IFileAppender, abc.ABC):
             self._file = None
     
     def write(self, string: str):
-        if self._file.writable:
+        if self._file is not None and self._file.writable:
             self._file.write(string)
             
     def __enter__(self):
@@ -156,11 +162,14 @@ class FileAppender(IFileAppender, abc.ABC):
             # os.unlink(self._file)
 
     def containsData(self):
-        data = self._file.read()
-        return bool(data)
+        if self._file is not None:
+            data = self._file.read()
+            return bool(data)
+        else:
+            return False
     
     def loadData(self):
-        return self._file.read()
+        return self._file.read() if self._file is not None else None
             
 class TxtFileAppender(FileAppender):
     def __init__(self, logname:str) -> None:
@@ -187,11 +196,14 @@ class TxtFileAppender(FileAppender):
             self._file = None
             
     def containsData(self):
-        data = self._file.read()
-        return bool(data)
-    
+        if self._file is not None:
+            data = self._file.read()
+            return bool(data)
+        else:
+            return False
+
     def loadData(self):
-        return self._file.read()
+        return self._file.read() if self._file is not None else None
             
 TX = TypeVar("TX", str, int, float, None, list, dict, Iterable, bool)
 
@@ -201,8 +213,11 @@ class JsonFileReader(FileReader):
         
     def read(self):
         try:
-            self._file.seek(0)
-            return json.load(self._file)
+            if self._file is not None:
+                self._file.seek(0)
+                return json.load(self._file)
+            else:
+                return None
         except JSONDecodeError as jsonE:
             logging.error(jsonE)
             raise jsonE
@@ -219,21 +234,38 @@ class JsonFileAppender(FileAppender):
                 json.dump({}, file, indent=4)
     
     def asEmptyDictionary(self):
-        with open(self._fileName, 'r+') as file:
+        with open(self._fileName, 'w') as file:
             file.seek(0)
             json.dump({}, file, indent = 4)
             
     def asEmptyList(self):
-        with open(self._fileName, 'r+') as file:
+        with open(self._fileName, 'w') as file:
             file.seek(0)
             json.dump([], file, indent = 4)
         
         
     def openStream(self):
-        self._file = open(self._fileName, 'r+')
+        '''Open the json file for reads only'''
+        self._file = open(self._fileName, 'r')
+        return self
+        
+    def openWriteAppendStream(self):
+        '''Open a file stream that is unable to truncate (delete / update any of) the target file'''
+        self._file = open(self._fileName, 'w+')
+        return self
+    
+    def openOverWriteStream(self):
+        '''Open a file stream to overwrite the target file'''
+        self._file = open(self._fileName, 'w')
+        return self
+    
+    @recursion_detector()
+    def flagOpenWriteStream(self):
+        '''Creates the file at path if doesnt exist and writes over it, not updates it'''
         self.write({"FileOpenEvent": datetime.strftime(datetime.now(), '"%Y-%m-%d %H:%M:%S"')})
         return self
     
+    @staticmethod
     def _mergeDicts(x:list[dict]) -> dict:
         if not x:
             return {}
@@ -242,8 +274,12 @@ class JsonFileAppender(FileAppender):
         res = x[0]
         return [{**res, **sx} for sx in x[1:]][-1]
     
+    @recursion_detector()
     def write(self, jsonObj:dict|list):
+        
+        file_data = type(jsonObj)()
         try:
+            self._file = open(self._fileName, 'r')
             self._file.seek(0)
             file_data = json.load(self._file)
         except JSONDecodeError as jsonE:
@@ -252,48 +288,66 @@ class JsonFileAppender(FileAppender):
         except Exception as e:
             logging.error(e)
             file_data = type(jsonObj)()
+        finally:
+            self.closeStream()
             
         
         # Merge jsonObj with file_data
-        def _updateDict(existingObj:TX, newObj:TX) -> TX:
-            keys:Tuple[str] = ()
-            if isinstance(existingObj, dict) and isinstance(newObj, dict):
+        def _updateDict(existingObj:TX, newObj:TX):
+            keys:Tuple[str]
+            merge_result:TX|list|dict = existingObj
+            if isinstance(merge_result, dict) and isinstance(newObj, dict):
                 for key in newObj.keys():
-                    if key in existingObj.keys():
-                        existingObj[key] = _updateDict(existingObj[key], newObj[key])
+                    if key in merge_result.keys():
+                        merge_result[key] = _updateDict(merge_result[key], newObj[key])
                     else:
-                        existingObj[key] = newObj[key]
-            elif isinstance(existingObj, dict) and isinstance(newObj, list):
-                existingObj = [existingObj, *newObj]
-            elif isinstance(existingObj, dict):
-                existingObj = [existingObj, newObj]
-            elif isinstance(existingObj, list) and isinstance(newObj, list):
-                existingObj += newObj
-            elif isinstance(existingObj, list):
-                existingObj += [newObj]
+                        merge_result[key] = newObj[key]
+            elif isinstance(merge_result, dict) and isinstance(newObj, list):
+                merge_result = [merge_result, *newObj]
+            elif isinstance(merge_result, dict):
+                merge_result = [merge_result, newObj]
+            elif isinstance(merge_result, list) and isinstance(newObj, list):
+                merge_result += newObj
+            elif isinstance(merge_result, list):
+                merge_result += [newObj]
             else:
-                return existingObj
-            return existingObj
+                return merge_result
+            return merge_result
         file_data = _updateDict(file_data, jsonObj)
         
         # Sets file's current position at offset.
-        self._file.seek(0)
+        # self._file.seek(0)
+        # Overwrite the entire file with the updated obj
+        self._file = open(self._fileName, 'w')
         # convert back to json.
-        json.dump(file_data, self._file, indent = 4)
+        try:
+            json.dump(file_data, self._file, indent = 4)
+        except Exception as e:
+            logging.warning('Unable to write json to file as ' + exception_to_string(e))
+        finally:
+            self.closeStream()
         
     def containsData(self):
-        data = self._file.read()
-        return bool(data)
+        if self._file is not None:
+            data = self._file.read()
+            return bool(data)
+        else:
+            return False
     
     def loadData(self):
-        return json.load(self._file)
+        return json.load(self._file) if self._file is not None and str(self._file.read()) != '' else None
     
-    def closeStream(self):
+    @recursion_detector()
+    def writeCloseStreamFlag(self):
         if self._file is not None:
             try:
                 self.write({"FileCloseEvent": datetime.strftime(datetime.now(), '"%Y-%m-%d %H:%M:%S"')})
             except Exception as e:
                 logging.error(e)
+    
+    @recursion_detector()
+    def closeStream(self):
+        if self._file is not None:
             self._file.close()
             self._file = None
 

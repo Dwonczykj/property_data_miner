@@ -1,35 +1,38 @@
 from __future__ import annotations
-import abc
 
-from py_utils import nullPipe, exception_to_string
-from os import path
+import abc
+import atexit
 import io
+import logging
 import os
+import re
+import warnings
 from collections import defaultdict
 from collections.abc import Sequence
-from enum import Enum, IntEnum
-from typing import Iterable, Literal, TypeVar
-import debugpy as debug
-import warnings
-from pprint import pprint
-import re
-import requests
-import numpy as np
-import matplotlib.pyplot as plt
-import atexit
 from datetime import datetime
-from file_appender import IFileAppender, DummyFileAppender, FileAppender, TxtFileAppender, JsonFileAppender
+from enum import Enum, IntEnum
+from os import path
+from pprint import pprint
+from typing import Iterable, Literal, TypeVar
+
+import debugpy as debug
+import matplotlib.pyplot as plt
+import numpy as np
+import requests
+from bs4 import BeautifulSoup, NavigableString, ResultSet, SoupStrainer, Tag
+from file_appender import (DummyFileAppender, FileAppender, IFileAppender,
+                           JsonFileAppender, TxtFileAppender)
 # from progress.spinner import Spinner
 # from progress.counter import Counter
 from progress.bar import Bar
-# from url_parser import ParsedUrlParser
-
-import logging
-
-from bs4 import BeautifulSoup, SoupStrainer, Tag, NavigableString, ResultSet
+from py_utils import exception_to_string, nullPipe
+from selenium.common.exceptions import TimeoutException
 from selenium.webdriver import Safari
 from selenium.webdriver.common.by import By
-from selenium.common.exceptions import TimeoutException
+
+# from url_parser import ParsedUrlParser
+
+
 
 class SlowBar(Bar):
     suffix = '%(remaining_hours)d hours remaining'
@@ -117,9 +120,9 @@ def seleniumTryClickWebEl(wElem):
 
     return clickSuccess
 
-def selenium_click_css(cssSelector, driver):
+def selenium_click_css(cssSelector:str, driver:Safari):
     success = False
-    webEl = driver.find_element_by_css_selector(cssSelector)
+    webEl = driver.find_element(by=By.CSS_SELECTOR,value=cssSelector)
     if webEl:
         if webEl.is_displayed():
             if not seleniumTryClickWebEl(webEl):
@@ -302,14 +305,14 @@ class UrlDiscoEngine():
 
     def find_and_agree_cookies(self):
         cookiesAgreed = False
-        
+        assert self.driver is not None, 'Safari webdriver is None'
         _f = lambda btnText: f"//*[text()='{btnText}']"
-        agreebtns = self.driver.find_elements_by_xpath(_f('I agree'))
+        agreebtns = self.driver.find_elements(by=By.XPATH,value=_f('I agree'))
         btn_ids= None
         if agreebtns:
             btn_ids = [agreebtn.get_attribute('id') for agreebtn in agreebtns]
         if not btn_ids:
-            agreebtns = self.driver.find_elements_by_xpath(_f('Allow All'))
+            agreebtns = self.driver.find_elements(by=By.XPATH,value=_f('Allow All'))
             if agreebtns:
                 btn_ids = [agreebtn.get_attribute('id') for agreebtn in agreebtns]
             else:
@@ -317,7 +320,7 @@ class UrlDiscoEngine():
 
         if btn_ids:
             for btn_id in btn_ids:
-                btn = self.driver.find_element_by_id(btn_id)
+                btn = self.driver.find_element(by=By.ID, value=btn_id)
                 if btn.is_displayed():
                     if not seleniumTryClickWebEl(btn):
                         # driver.execute_script(f'$(\'#{btn_id}\').click()')

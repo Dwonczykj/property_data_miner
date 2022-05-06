@@ -27,3 +27,8 @@
    2. Cross-rail zones
 5. Edinburgh
 6. Newcastle
+
+## Code Requirements
+1. Gauge rental yields from using the rental side of trovit
+   1. additionally gauge rental demand by using their api to see interest for each property on the rental side (this info might also be useful on the property search side)
+2. 

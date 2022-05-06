@@ -1,17 +1,17 @@
-from os import path
 import io
 import os
 import re
-import requests
-import numpy as np
-import matplotlib.pyplot as plt
+import warnings
 from collections import defaultdict
 from collections.abc import Sequence
-from uint import Uint, Int
 from enum import Enum, IntEnum
-import debugpy as debug
-import warnings
+from os import path
 from pprint import pprint
+
+import debugpy as debug
+import matplotlib.pyplot as plt
+import numpy as np
+import requests
 
 '''
 This script contains functions to parse individual urls into their constituent paths and then add them any exisiting url ranking trees.
@@ -92,7 +92,7 @@ class ParsedUrlParser():
 
     URL_DOMAIN_MATCH = r'^(({0}({0}http[s]?|ftp):\/\/){1}({0}[^:\/\s]+))'.format(reNoCapt, reCondProtcl)
 
-    URL_PATH_MATCH = r'^(({0}\/[\w-]+))'.format(reNoCapt)
+    URL_PATH_MATCH = r'^(({0}\/[\w.\-_]+))'.format(reNoCapt)
 
     URL_QUERY_FLAG_MATCH = r'^\?|\/\?'
     

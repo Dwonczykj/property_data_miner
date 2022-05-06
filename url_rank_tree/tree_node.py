@@ -1,28 +1,28 @@
 from __future__ import annotations
+
+import abc
 import inspect
-from operator import add
-from os import path, setpgid
 import io
+import json
 import os
 import re
-from typing import Any, Callable, Generic, Iterable, Optional, TypeVar
-import jsonpickle
-import requests
-import numpy as np
-import matplotlib.pyplot as plt
+import uuid
+import warnings
 from collections import defaultdict
 from collections.abc import Sequence
-from uint import Uint, Int
 from enum import Enum, IntEnum
-import debugpy as debug
-import warnings
+from operator import add
+from os import path, setpgid
 from pprint import pprint
-import abc
-import json
-import pydot
-import uuid
+from typing import Any, Callable, Generic, Iterable, Optional, TypeVar
 
- 
+import debugpy as debug
+import jsonpickle
+import matplotlib.pyplot as plt
+import numpy as np
+import pydot
+import requests
+
 os.environ["PATH"] += os.pathsep + "/usr/local/Cellar/graphviz/2.50.0/bin"
 
 # graph = pydot.Dot(graph_type="graph", rankdir="UD")
@@ -151,11 +151,11 @@ class ITreeNode(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def getDepth(self) -> Uint:
+    def getDepth(self) -> int:
         pass
 
     @abc.abstractmethod
-    def numberOfLayers() -> Uint:
+    def numberOfLayers() -> int:
         pass
 
     @abc.abstractmethod
@@ -187,7 +187,7 @@ class ITreeChildNode(ITreeNode):
 
 class TreePrintable(ITreeNode):
 
-    def ancestorAtLevel(self, level:Uint) -> ITreeNode:
+    def ancestorAtLevel(self, level:int) -> ITreeNode:
         '''Root is level 1'''
         level = max(1,level)
         ancestry = self.ancestry()
@@ -196,7 +196,7 @@ class TreePrintable(ITreeNode):
             return self
         return ancestry[level-1]
 
-    def ancestorGenerationsBefore(self, generationsAgo:Uint) -> ITreeNode:
+    def ancestorGenerationsBefore(self, generationsAgo:int) -> ITreeNode:
         generationsAgo = max(0,generationsAgo)
         ancestor = self
         for i in range(0,generationsAgo):
@@ -439,7 +439,7 @@ class TreeTraversable(ITreeNode):
         return hash(str(self))   
     
 T = TypeVar("T")
-TS = TypeVar("TS", str, Uint, int, float, None, list, dict, Sequence, Iterable, bool)
+TS = TypeVar("TS", str, int, float, None, list, dict, Sequence, Iterable, bool)
 
 class Serializable(abc.ABC):
 

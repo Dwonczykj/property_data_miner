@@ -17,7 +17,7 @@ from progress.spinner import Spinner
 from progress.counter import Counter
 from progress.bar import Bar
 from py_utils import exception_to_string, nullPipe
-from selenium_interops import get_tag_ancestors_lxml, get_tag_ancestors_selenium
+from selenium_interops import get_embedded_links_selenium, get_tag_ancestors_lxml, get_tag_ancestors_selenium
 from url_browse import CanUseRawHTMLRequests, UrlProps, UrlScraperSeleniumBase
 
 from url_discovery import seleniumTryClickWebEl
@@ -192,28 +192,8 @@ class UrlSpiderScraper(UrlScraperSeleniumBase):
         anchorTagUrls: list[str] = []
         scriptTagUrlEmbeds: list[str] = []
         onClickAttributeUrlEmbeds: list[str] = []
-        try:
-            anchorTagUrls = [we.get_attribute(
-                'href') for we in driver.find_elements(By.TAG_NAME, 'a')]
-            scriptTagUrlEmbeds = [nullPipe(re.match(URL_RE_PATTERN, str(
-                we.text)), lambda x: x.string if x is not None else '') for we in driver.find_elements(By.TAG_NAME, 'script')]
-            onClickAttributeUrlEmbeds = [nullPipe(re.match(URL_RE_PATTERN, we.get_attribute(
-                'onClick')), lambda x: x.string if x is not None else '') for we in driver.find_elements(By.CSS_SELECTOR, '[onClick]') if we.get_attribute('onClick')]
-        except TimeoutException as timeoutExcp:
-            if not anchorTagUrls:
-                logging.warn(
-                    f'Selenium failed to grab anchor tag urls for {rootUrl}.')
-                anchorTagUrls = []
-            if not scriptTagUrlEmbeds:
-                logging.warn(
-                    f'Selenium failed to grab script Tag Url Embeds for {rootUrl}.')
-                scriptTagUrlEmbeds = []
-            if not onClickAttributeUrlEmbeds:
-                logging.warn(
-                    f'Selenium failed to grab onClick Attribute Url Embeds for {rootUrl}.')
-                onClickAttributeUrlEmbeds = []
-        except Exception as e:
-            logging.error(exception_to_string(e))
+        anchorTagUrls, scriptTagUrlEmbeds, onClickAttributeUrlEmbeds = \
+            get_embedded_links_selenium(web_el=driver.find_element(by=By.XPATH, value="/"))
         # Button urls should be included in the onClick handler above.
         # buttonTagUrls = [we for we in driver.find_elements(By.TAG_NAME, 'button')]
 

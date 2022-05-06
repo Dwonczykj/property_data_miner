@@ -1,0 +1,17 @@
+/data/url_*.json
+
+.pytest_cache
+__pycache__
+
+*.icloud
+
+logs
+
+
+db.json
+
+*.csv
+*.log
+.env
+
+.DS_Store

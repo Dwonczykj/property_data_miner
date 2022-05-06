@@ -11,7 +11,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from collections import UserList, defaultdict
 from collections.abc import Sequence
-from uint import Uint, Int
 from enum import Enum, IntEnum
 import debugpy as debug
 import warnings
@@ -33,9 +32,9 @@ class RankTreeBuilderFlags(Enum):
     
 
 class RankPair():
-    def __init__(self, pathFrequencyCounter: Uint, numberRegexNodes: Uint, isRegexNode: bool) -> None:
-        self._pathFrequencyCounter: Uint = pathFrequencyCounter
-        self._numberRegexNodes: Uint = numberRegexNodes
+    def __init__(self, pathFrequencyCounter: int, numberRegexNodes: int, isRegexNode: bool) -> None:
+        self._pathFrequencyCounter: int = pathFrequencyCounter
+        self._numberRegexNodes: int = numberRegexNodes
         self._isRegexNode: bool = isRegexNode
 
     def getPathFreq(self):
@@ -50,11 +49,11 @@ class RankPair():
     def getNumRegexNodes(self):
         return self._isRegexNode
 
-    pathFrequencyCounter:Uint = property(getPathFreq)
+    pathFrequencyCounter:int = property(getPathFreq)
 
     isRegexNode:bool = property(getIsRegexNode)
 
-    numberRegexNodes:Uint = property(getNumRegexNodes)
+    numberRegexNodes:int = property(getNumRegexNodes)
 
 class IRankPairTreeRootNode(ITreeNode):
     @property
@@ -497,6 +496,7 @@ class RankPairTree(Serializable):
         return bool(self._processUrl(url, embed=False, filterRegexNodesFromMatches=False)[1]) if self.initialised else False
 
     def getExampleGeneralisationOf(self, url:str, removeRegexNodes:bool=True):
+        '''Get the nearest existing url in the tree to the url parameter, with the regex url path/query parts removed'''
         return predicatePipe(self.getAllExampleGeneralisationsOf(url=url, removeRegexNodes=removeRegexNodes), lambda o: bool(o), lambda x: x[0])
     
     def getAllExampleGeneralisationsOf(self, url:str, removeRegexNodes:bool=True) -> list[str|None]:
@@ -504,7 +504,7 @@ class RankPairTree(Serializable):
 
     def _processUrl(self, url:str, embed:bool, filterRegexNodesFromMatches:bool=True) -> Tuple[RankPairTree,list[str]]:
         '''If embed, bake url into self and return self, else bake url into a copy of self and return the copy.'''
-        instance:RankPairTree=None
+        instance:RankPairTree|None=None
         
         if embed:
             # _treeState:RankPairTreeRootNode = self._treeState
@@ -768,7 +768,7 @@ class RankPairTree(Serializable):
     def getDepth(self):
         return self._treeState.numberOfLayers
     
-    depth:Uint = property(getDepth)
+    depth:int = property(getDepth)
 
     TREE_ROOT_DEFAULT_NAME = 'root'
 
