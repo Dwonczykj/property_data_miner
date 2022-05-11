@@ -1,32 +1,30 @@
-from collections import defaultdict
-from enum import Enum
-from types import NoneType
-from typing import Iterable, Literal, TypeVar
-import abc
-import re
 import logging
+import re
 import warnings
-from selenium.webdriver import Safari
-from selenium.webdriver.common.by import By
-from selenium.common.exceptions import TimeoutException
+from collections import defaultdict
+from typing import Literal
+
 import requests
 from bs4 import BeautifulSoup
-from lxml import etree
-
+from file_appender import JsonFileAppender, TxtFileAppender
 from progress.spinner import Spinner
-from progress.counter import Counter
-from progress.bar import Bar
 from py_utils import exception_to_string, nullPipe
-from selenium_interops import get_embedded_links_selenium, get_tag_ancestors_lxml, get_tag_ancestors_selenium
-from url_browse import CanUseRawHTMLRequests, UrlProps, UrlScraperSeleniumBase
-
-from url_discovery import seleniumTryClickWebEl
-from file_appender import IFileAppender, DummyFileAppender, TxtFileAppender, JsonFileAppender
-from url_parser import ParsedUrlParser, URL_RE_PATTERN
 from rank_pair_tree import RankPairTree
+from selenium.webdriver import Safari
+from selenium.webdriver.common.by import By
+from selenium_interops import get_embedded_links_selenium
+from url_parser import URL_RE_PATTERN, ParsedUrlParser
+
+from url_scraper_base import (CanUseRawHTMLRequests, UrlProps,
+                              UrlLinkScraperSeleniumBase)
+
+# from lxml import etree
 
 
-class UrlSpiderScraper(UrlScraperSeleniumBase):
+
+
+
+class UrlSpiderScraper(UrlLinkScraperSeleniumBase):
     '''Perform all url scraping with additional url parsing and adding to a rank tree to manage the state of urls already processed'''
     maxSpiderExplodeAllowed: Literal[3] = 3
     defaultSpiderExplodeDepth: Literal[3] = 3
@@ -126,6 +124,7 @@ class UrlSpiderScraper(UrlScraperSeleniumBase):
         logging.info(f'urlDiscovery[{driverType}]: {rootUrl}')
 
         if useSelenium and driver is not None:
+            urlDomain:str|None=None
             if any(rootUrl.startswith(u) for u in self._domainsHit.keys() if bool(u)):
                 urlDomain = next((u
                                  for u in self._domainsHit.keys() if bool(u) and rootUrl.startswith(u)))
@@ -142,6 +141,8 @@ class UrlSpiderScraper(UrlScraperSeleniumBase):
                             self._domainsHit[urlDomain] += 1
                 except:
                     urlDomain = None
+            
+            _checkCookies = False
             if urlDomain:
                 if self._domainsHit[urlDomain] < maxDomainHitsCookieCheck:
                     _checkCookies = True
@@ -167,7 +168,7 @@ class UrlSpiderScraper(UrlScraperSeleniumBase):
                 result.embeddedScriptAndAnchorTagHrefs)
         )
 
-    def _urlDiscoverySelenium(self, rootUrl: str, driver: Safari, checkCookies=False):
+    def _urlDiscoverySelenium(self, rootUrl: str, driver: Safari, checkCookies:bool=False):
         try:
             driver.get(rootUrl)
         except Exception as e:

@@ -1,33 +1,21 @@
-import abc
 import logging
 import re
-import warnings
-from collections import defaultdict
-from enum import Enum
-from types import NoneType
-from typing import Iterable, Literal, TypeVar
 
 import requests
 from bs4 import BeautifulSoup
-from file_appender import (DummyFileAppender, IFileAppender, JsonFileAppender,
-                           TxtFileAppender)
 from lxml import etree
-from progress.bar import Bar
-from progress.counter import Counter
-from progress.spinner import Spinner
 from py_utils import exception_to_string, int_to_pos_int, nullPipe
-from rank_pair_tree import RankPairTree
+# from rank_pair_tree import RankPairTree
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver import Safari
 from selenium.webdriver.common.by import By
 from selenium_interops import (get_tag_ancestors_lxml,
                                get_tag_ancestors_selenium)
-from url_browse import UrlProps, UrlScraperSeleniumBase
-from url_discovery import seleniumTryClickWebEl
-from url_parser import URL_RE_PATTERN, ParsedUrlParser
+
+from url_scraper_base import UrlProps, UrlLinkScraperSeleniumBase
 
 
-class TrovitPropertyUrlScraper(UrlScraperSeleniumBase):
+class UrlPropertyTrovitScraper(UrlLinkScraperSeleniumBase):
 
     def __init__(self) -> None:
         super().__init__()

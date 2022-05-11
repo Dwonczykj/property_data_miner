@@ -1,12 +1,15 @@
+# Next task
+Plug in a TinyDB instance for saving down html documents by there url name and save the url_tree json to another TinyDB instance.
+
 # Questions to answer:
-1. Should we consider using a browser emulator in order to avoid loading issues for the content.
-2. We then need to start pulling information from all sorts of sites in order to start building a training dataset for out model.
+1. Can we build an key-information extractor that uses the html NOT SELENIUM as wont be in the browser at the time of information extraction.
+2. We need to start pulling information from all sorts of sites in order to start building a training dataset for out model.
    1. This information should include:
       1. All the text content of the webpage
       2. the complete outer html of the webpage
          1. We can use the outer html to try and build a separate robot that is trained to extract information from html content
       3. categorization of the page?
-      4. 
+      4. we can go back into sites at a later date to take screenshots of page with the updated html if that proves to be at all useful, but this is too heavy to do now.
 3. Workout how to auto label the training data using Inception?...
 
 

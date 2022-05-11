@@ -1,7 +1,7 @@
 import logging
 
 from rank_pair_tree import RankPairTree
-from trovit_property_url_scraper import TrovitPropertyUrlScraper
+from url_property_trovit_scraper import UrlPropertyTrovitScraper
 
 if __name__ == '__main__':
 
@@ -23,4 +23,4 @@ if __name__ == '__main__':
     # TrovitPropertyUrlScraper().run_url_discovery('https://groceries.asda.com', 'asda.com', explodeTimes = 3, saveOut='ASDA')
     # trovit_landing_page_search = 'https://homes.trovit.co.uk/index.php/cod.search_homes/type.1/what_d.Liverpool/sug.0/isUserSearch.1/origin.2/order_by.relevance/region.Merseyside/price_max.300000/rooms_min.2/bathrooms_min.2/date_from.1/'
     trovit_landing_page_search = 'https://homes.trovit.co.uk/index.php/cod.search_homes/type.1/what_d.Liverpool/sug.0/isUserSearch.1/origin.2/order_by.relevance/region.Merseyside/price_max.300000/rooms_min.2/bathrooms_min.2/'
-    TrovitPropertyUrlScraper().run_url_discovery(trovit_landing_page_search, 'rd.clk.thribee', saveOut='Liverpool')
+    UrlPropertyTrovitScraper().run_url_discovery(trovit_landing_page_search, 'rd.clk.thribee', saveOut='Liverpool')
