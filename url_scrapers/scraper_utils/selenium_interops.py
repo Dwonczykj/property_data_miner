@@ -16,10 +16,12 @@ from url_parser import URL_RE_PATTERN
 from css_selector_utils import getCssPath
 
 
-def seleniumTryClickWebEl(wElem:WebElement):
+def seleniumTryClickWebEl(wElem: WebElement, cbToConfirmClicked: Callable[[WebElement], bool] | None = None):
     clickSuccess = False
     try:
         wElem.click()
+        if cbToConfirmClicked:
+            return cbToConfirmClicked(wElem)
         clickSuccess = True
     except Exception as e:
         clickSuccess = False

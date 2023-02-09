@@ -12,7 +12,8 @@ from selenium.webdriver.common.by import By
 from selenium_interops import (get_tag_ancestors_lxml,
                                get_tag_ancestors_selenium)
 
-from url_scraper_base import UrlLinkScraperSeleniumBase, UrlProps
+from url_props import UrlProps, CanUseRawHTMLRequests
+from url_scraper_selenium_base import UrlLinkScraperSeleniumBase
 
 
 class UrlListScraper(UrlLinkScraperSeleniumBase):

@@ -2,7 +2,7 @@
 
 from bs4 import BeautifulSoup
 
-from url_scraper_base import InfoScraperRequestsBase
+from url_scraper_requests_base import InfoScraperRequestsBase
 
 
 class InfoMicroAcquireRequestsScraper(InfoScraperRequestsBase):

@@ -14,8 +14,10 @@ from selenium.webdriver import Safari
 from selenium.webdriver.common.by import By
 from selenium_interops import get_embedded_links_selenium
 from url_parser import URL_RE_PATTERN, ParsedUrlParser
+from url_props import UrlProps, CanUseRawHTMLRequests
+from url_scraper_selenium_base import UrlLinkScraperSeleniumBase
 
-from url_scraper_base import (CanUseRawHTMLRequests, UrlProps,
+from url_scraper_requests_base import (CanUseRawHTMLRequests, UrlProps,
                               UrlLinkScraperSeleniumBase)
 
 # from lxml import etree

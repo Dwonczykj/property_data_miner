@@ -2,11 +2,12 @@
     "python.testing.pytestArgs": [
         "url_pull",
     ],
-    "python.defaultInterpreterPath": "/Users/joeyd/opt/anaconda3/envs/house-price-predictor",
+    "python.defaultInterpreterPath": "/opt/homebrew/Caskroom/miniconda/base/envs/property_data_miner_1",
     "python.testing.unittestEnabled": false,
     "python.testing.pytestEnabled": true,
     "python.analysis.extraPaths": [
         "${workspaceFolder}/utils/",
+        "${workspaceFolder}/groceries_scrapers/",
         "${workspaceFolder}/url_scrapers/",
         "${workspaceFolder}/url_scrapers/scraper_utils/",
         "${workspaceFolder}/url_pull/scrapers/",

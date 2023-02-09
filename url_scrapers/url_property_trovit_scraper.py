@@ -1,26 +1,12 @@
-import logging
 import re
+from py_utils import int_to_pos_int
+from url_scraper import UrlScraper
 
-import requests
-from bs4 import BeautifulSoup
-from lxml import etree
-from py_utils import exception_to_string, int_to_pos_int, nullPipe
-# from rank_pair_tree import RankPairTree
-from selenium.common.exceptions import TimeoutException
-from selenium.webdriver import Safari
-from selenium.webdriver.common.by import By
-from selenium_interops import (get_tag_ancestors_lxml,
-                               get_tag_ancestors_selenium)
-
-from url_scraper_base import UrlProps, UrlLinkScraperSeleniumBase
-
-
-class UrlPropertyTrovitScraper(UrlLinkScraperSeleniumBase):
-
+class UrlPropertyTrovitScraper(UrlScraper):
     def __init__(self) -> None:
         super().__init__()
-        self._page_number: int = 0
         self.maxDomainHitsCookieCheck = 5
+        self._page_number: int = 0
 
     @property
     def link_xpath_selector(self):
@@ -33,7 +19,10 @@ class UrlPropertyTrovitScraper(UrlLinkScraperSeleniumBase):
         urlPioneer = self.open_file_storage_stream(saveOut=saveOut)
         urlPioneer = set()
         self.run_url_discovery_engine(
-            urlPioneer=urlPioneer, domain=domain, subDomainReq=subDomainReq)
+            urlPioneer=urlPioneer, 
+            domain=domain,
+            subDomainReq=subDomainReq
+            )      
 
     def next_page(self):
         assert self.driver is not None
@@ -91,79 +80,3 @@ class UrlPropertyTrovitScraper(UrlLinkScraperSeleniumBase):
         else:
             next_urls = []
         return next_urls
-        
-        
-
-    def _urlDiscoverySelenium(self, rootUrl: str, driver: Safari, checkCookies:bool=False):
-        try:
-            driver.get(rootUrl)
-        except Exception as e:
-            logging.error(
-                f'Selenium Fell over trying to get: {rootUrl} with a {type(e).__name__} exception.')
-            logging.error(e)
-
-        try:
-            self._closeExtraSeleniumWebWindows()
-        except Exception as e:
-            logging.error(
-                f'Selenium Fell over trying to close extra selenium windows in: {rootUrl} with a {type(e).__name__} exception.')
-
-        cookiesAgreed = False
-        if checkCookies:
-            try:
-                cookiesAgreed = self.find_and_agree_cookies()
-            except Exception as e:
-                logging.error(
-                    f'Selenium Fell over trying to find and agree cookies in: {rootUrl} with a {type(e).__name__} exception.')
-
-        property_page_links: list[str] = []
-
-        try:
-            property_page_divs = driver.find_elements(by=By.XPATH,value=
-                self.link_xpath_selector)
-
-            for div in property_page_divs:
-                ancestors = get_tag_ancestors_selenium(div, lambda we: (we.tag_name, we.get_attribute('href')))
-                if any((d[0] == 'A' for d in ancestors)):
-                    atag_href = next((d[1] for d in ancestors if d[0] == 'A'))
-                    property_page_links.append(atag_href)
-
-        except TimeoutException as timeoutExcp:
-            if not property_page_links:
-                logging.warn(
-                    f'Selenium failed to grab anchor tag urls for {rootUrl}.')
-        except Exception as e:
-            logging.error(exception_to_string(e))
-
-        urlProps = UrlProps(property_page_links, [],
-                            cookiesAgreed=cookiesAgreed)
-        return urlProps
-
-    def _urlDiscoveryHTMLOnly(self, rootUrl: str):
-
-        # http://www.xhaus.com/headers -> View your headers in browser
-        headers = {
-            "User-agent": 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.55 Safari/537.36 Edg/96.0.1054.43'}
-        if rootUrl.startswith('file:///'):
-            with open(re.sub(r'^file:\/\/\/', '/', rootUrl), 'r') as f:
-                pageContents = f.read()
-        else:
-            pageContents = requests.get(rootUrl, headers=headers).content
-        # print(page.content)
-        soup = BeautifulSoup(pageContents, 'html.parser')
-        dom = etree.HTML(str(soup), parser=None)
-        property_page_links: list[str] = []
-        try:
-            property_page_divs = dom.xpath(self.link_xpath_selector)
-
-            for div in property_page_divs:
-                ancestors = get_tag_ancestors_lxml(div, lambda tag: (tag.tag, tag.attrib.get('href')))
-                if any((d[0] == 'a' for d in ancestors)):
-                    atag_href = next((d[1] for d in ancestors if d[0] == 'a'))
-                    property_page_links.append(atag_href)
-
-        except Exception as e:
-            logging.error(exception_to_string(e))
-
-        urlProps = UrlProps(property_page_links, [])
-        return urlProps

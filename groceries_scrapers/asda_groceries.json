@@ -1,0 +1,58 @@
+{
+    "products": {
+        "https://groceries.asda.com/product/vegan-chicken-alternatives/the-meatless-farm-co-plant-based-chicken-breasts-x-2/1000337457283": {
+            "search_name": "the-meatless-farm-co-plant-based-chicken-breasts",
+            "name": {
+                "css_selector": "h1.pdp-main-details__title",
+                "attribute": "inner_text"
+            },
+            "price": {
+                "css_selector": "div.pdp-main-details__price-container",
+                "attribute": "inner_text"
+            },
+            "use_by_estimate": {
+                "css_selector": "div.co-product__promo-icon-desc.pdp-icon-list__promo-icon-desc",
+                "attribute": "inner_text"
+            },
+            "package_size": {
+                "css_selector": "div.pdp-description-reviews__product-details-cntr",
+                "attribute": "inner_text"
+            },
+            "protein_per_large_serving": {
+                "css_selector": "div.pdp-description-reviews__nutrition-cell.pdp-description-reviews__nutrition-cell--details",
+                "attribute": "inner_text",
+                "location": "+1"
+            },
+            "carbohydrates_per_large_serving": {
+                "css_selector": "div.pdp-description-reviews__nutrition-cell.pdp-description-reviews__nutrition-cell--details",
+                "attribute": "inner_text",
+                "location": "+1"
+            },
+            "fats_per_large_serving": {
+                "css_selector": "div.pdp-description-reviews__nutrition-cell.pdp-description-reviews__nutrition-cell--details",
+                "attribute": "inner_text",
+                "location": "+1"
+            },
+            "fibre_per_large_serving": {
+                "css_selector": "div.pdp-description-reviews__nutrition-cell.pdp-description-reviews__nutrition-cell--details",
+                "attribute": "inner_text",
+                "location": "+1"
+            },
+            "salt_per_large_serving": {
+                "css_selector": "div.pdp-description-reviews__nutrition-cell.pdp-description-reviews__nutrition-cell--details",
+                "attribute": "inner_text",
+                "location": "+1"
+            },
+            "kcal_per_large_serving": {
+                "css_selector": "div.pdp-description-reviews__nutrition-cell.pdp-description-reviews__nutrition-cell--details",
+                "attribute": "inner_text",
+                "location": "+1"
+            },
+            "ingredients": {
+                "css_selector": "div.pdp-description-reviews__product-details-content",
+                "attribute": "inner_text"
+            }
+        }
+    },
+    "base_url": "https://groceries.asda.com/"
+}
